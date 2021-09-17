@@ -215,6 +215,48 @@ b_wp -> b_user : success
 
 @enduml
 
+### Create project process
+- 고려사항
+- 검토 필요 사항
+
+@startuml
+
+scale 1
+skinparam ParticipantPadding 5
+skinparam BoxPadding 5
+title "Project 생성"
+
+actor User
+box "site A - platform plane"
+    participant DWP
+    participant CUBE
+    participant NotifyAgent
+    participant TaskAgent
+    participant TaskRunner
+    participant "Bitbucket\n(source)" as source
+    participant Jira
+end box
+
+autonumber 1-1
+User -> DWP : create project
+DWP -\ TaskAgent : run task
+TaskAgent -> TaskRunner : run task
+activate TaskRunner
+
+TaskRunner -> source : create project
+TaskRunner -> source : modify member
+TaskRunner -> Jira : create project
+TaskRunner -> Jira : modify member
+
+TaskRunner --\ NotifyAgent : send notify
+deactivate TaskRunner
+NotifyAgent --\ CUBE : send message
+
+autonumber 2-1
+User -> DWP : view status
+
+@enduml
+
 ### Create application process
 - 고려사항
     - site 정보와 상관없이 application 을 생성을 할 수 있도록 한다.
@@ -239,7 +281,6 @@ box "site A - platform plane"
     participant TaskRunner
     participant "Bitbucket\n(source)" as source
     participant "Bitbucket\n(yaml)" as yaml
-    participant Jira
 end box
 
 autonumber 1-1
@@ -247,13 +288,55 @@ User -> DWP : create app.
 DWP -\ TaskAgent : run task
 TaskAgent -> TaskRunner : run task
 activate TaskRunner
+
 TaskRunner -> source : checkout source template
 TaskRunner -> source : create repository
 TaskRunner -> source : push source
 TaskRunner -> yaml : checkout yaml template
 TaskRunner -> yaml : create repository
 TaskRunner -> yaml : push yaml
-TaskRunner -> Jira : create jira project
+
+TaskRunner --\ NotifyAgent : send notify
+deactivate TaskRunner
+NotifyAgent --\ CUBE : send message
+
+autonumber 2-1
+User -> DWP : view status
+
+@enduml
+
+### Create helm chart process
+- 고려사항
+    - site 정보와 상관없이 helm chart 를 생성을 할 수 있도록 한다.
+- 검토 필요 사항
+    - TaskRunner 에서 발생하는 status 를 NotifyAgent 로 보내는 기술 검증 필요
+    - TaskRunner 에서 발생하는 status 를 조회하는 기능 검증 필요
+
+@startuml
+
+scale 1
+skinparam ParticipantPadding 5
+skinparam BoxPadding 5
+title "App. 생성"
+
+actor User
+box "site A - platform plane"
+    participant DWP
+    participant CUBE
+    participant NotifyAgent
+    participant TaskAgent
+    participant TaskRunner
+    participant "Bitbucket\n(yaml)" as yaml
+end box
+
+autonumber 1-1
+User -> DWP : create app.
+DWP -\ TaskAgent : run task
+TaskAgent -> TaskRunner : run task
+activate TaskRunner
+TaskRunner -> yaml : checkout yaml template
+TaskRunner -> yaml : create repository
+TaskRunner -> yaml : push yaml
 TaskRunner --\ NotifyAgent : send notify
 deactivate TaskRunner
 NotifyAgent --\ CUBE : send message
@@ -438,25 +521,27 @@ TaskAgent -\ TaskRunner : run task
 activate TaskRunner
 
 TaskRunner -> argoyaml : if not exists ArgoApp. then \n push yaml
-TaskRunner -> argoyaml : checkout yaml
+ArgoCD -\ argoyaml : if not exists ArgoApp. then \n sync yaml
+note right : AgroCD process
+ArgoCD -\ k8sc : if not exists ArgoApp. then \n deploy yaml
+
+TaskRunner -> yaml : checkout yaml
 TaskRunner -> TaskRunner : modify yaml
-TaskRunner -> argoyaml : push yaml
-TaskRunner -\ ArgoCD : sync yaml
+TaskRunner -> yaml : push yaml
+TaskRunner -\ ArgoCD : run deploy
 
 TaskRunner --\ NotifyAgent : notify status
 deactivate TaskRunner
 NotifyAgent --\ CUBE : send message
 
-autonumber 2-1
-ArgoCD -> argoyaml : checkout yaml
+autonumber 4-1
+ArgoCD -\ yaml : checkout yaml
 note right : AgroCD process
-ArgoCD -> k8sc : deploy ArgoCD app.
-ArgoCD -\ k8s : deploy helm chart
+ArgoCD -\ k8s : deploy yaml
 
 autonumber 3-1
-k8s -\ Harbor : download helm chart
-note right : k8s process
-k8s -\ k8s : deploy resources
+k8s -\ k8s : deploy resource
+note left : k8s process
 k8s -\ Harbor : pull docker image
 
 autonumber 4-1
