@@ -23,31 +23,29 @@ legend
 endlegend
 
 rectangle "site A" as a {
-    rectangle "Common Service" as a_comm {
-        [SSO] as a_comm_sso
-        [Cube] as a_comm_cube
-        [CDN] as a_comm_cnd
-        [SMTP] as a_comm_smtp
+    rectangle "Common Service" as comm {
+        [SSO] as sso
+        [Cube] as cube
+        [CDN] as cdn
+        [SMTP] as smtp
     }
-    rectangle "CI/CD" as hcp_cicd {
-        [Nexus] as hcp_cicd_nexus
-        [Bitbucket] as hcp_cicd_bitbucket
-        [Jira] as hcp_cicd_jira
-        [Harbor] as hcp_cicd_harbor #orange
+    rectangle "CI/CD" as cicd {
+        [Nexus] as nexus
+        [Bitbucket] as bitbucket
+        [Jira] as jira
+        [Harbor] as harbor #orange
     }
     node "Platfrom Plane" as hcp {
-        rectangle "Portal" as hcp_portal {
-            [WP] as hcp_portal_wp
-            [DWP] as hcp_portal_dwp
-            [Redis-WP] as hcp_portal_rediswp
-            [Redis-DWP] as hcp_portal_redisdwp
-            hcp_portal_wp -- hcp_portal_rediswp
-            hcp_portal_dwp -- hcp_portal_redisdwp
+        rectangle "Portal" as portal {
+            [WP] as wp
+            [DWP] as dwp
+            [Redis-WP] as rediswp
+            [Redis-DWP] as redisdwp
         }
-        rectangle "Task Service" as hcp_agent {
-            [TaskAgent] as hcp_agent_taskagent #orange
-            [TaskRunner] as hcp_agent_taskrunner #orange
-            [NotifyAgent] as hcp_agent_notifyagent #orange
+        rectangle "Task Service" as task {
+            [TaskAgent] as taskagent #orange
+            [TaskRunner] as taskrunner #orange
+            [NotifyAgent] as notifyagent #orange
         }
     }
 }
@@ -355,8 +353,8 @@ end box
 box "site B - control plane"
     participant TaskRunner
     participant ArgoCD
-    participant k8s as k8sc
     participant Harbor
+    participant k8s as k8sc
 end box
 box "site B - data plane"
     participant k8s
