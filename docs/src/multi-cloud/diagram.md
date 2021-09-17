@@ -16,9 +16,11 @@
 
 @startuml
 
-[기존컴포넌트] as old
-[신규컴포넌트] as new #orange
-old -[hidden]d-> new
+legend
+    |= Color |
+    | <size:14><back:#Orange>신규컴포넌트</back></size>|
+    | <size:14><back:#Yellow>기존컴포넌트</back></size>|
+endlegend
 
 rectangle "site A" as a {
     rectangle "Common Service" as a_comm {
@@ -62,9 +64,11 @@ rectangle "site A" as a {
 
 @startuml
 
-[기존컴포넌트] as old
-[신규컴포넌트] as new #orange
-old -[hidden]d-> new
+legend
+    |= Color |
+    | <size:14><back:#Orange>신규컴포넌트</back></size>|
+    | <size:14><back:#Yellow>기존컴포넌트</back></size>|
+endlegend
 
 node "Control Plane" as bcp {
     rectangle "Task Service" as bcp_cicd {
@@ -92,9 +96,11 @@ node "Control Plane" as bcp {
 
 @startuml
 
-[기존컴포넌트] as old
-[신규컴포넌트] as new #orange
-old -[hidden]d-> new
+legend
+    |= Color |
+    | <size:14><back:#Orange>신규컴포넌트</back></size>|
+    | <size:14><back:#Yellow>기존컴포넌트</back></size>|
+endlegend
 
 node "Data Plane" as bdp {
     rectangle "Biz" as bdp_biz {
@@ -292,6 +298,7 @@ TaskRunner -> Harbor : push docker image
 Harbor -\ Harbor : scan docker image
 TaskRunner -> SonarQube : test source
 TaskRunner --\ NotifyAgent : send notify
+deactivate TaskRunner
 NotifyAgent --\ CUBE : send message
 
 autonumber 2-1
@@ -344,6 +351,7 @@ ArgoCD -\ k8s : deploy yaml
 k8s -\ k8s : run deploy/pod
 k8s -\ Harbor : pull docker image
 TaskRunner --\ NotifyAgent : notify status
+deactivate TaskRunner
 NotifyAgent --\ CUBE : send message
 
 autonumber 4-1
@@ -366,16 +374,48 @@ title "Argo Workflow"
 
 agent TaskAgent
 rectangle ArgoWorkflow {
-    collections Workflow
     agent WorkflowTemplate
+    collections Workflow
+    collections Template
+    collections Arguments
+    agent Step
+    agent DAG
+    agent Container
+    agent Script
+    agent Resource
+    artifact MINIO
+    collections Inputs
+    collections Outputs
+    database postgres
 }
 rectangle k8s {
-    collections pod
+    collections Pods
+    collections Resources
 }
 
-TaskAgent -r- WorkflowTemplate : run workflow
-WorkflowTemplate -d- Workflow : create workflow
-Workflow -r- pod : create/run pod
+TaskAgent -d-> Workflow : run workflow
+Workflow ..* Template : include
+Workflow .r.o Arguments : include
+Template .u.o WorkflowTemplate : reference
+
+Step .r.* Template : include
+DAG .r.* Template : include
+
+Template .l.o Step : include
+Template .l.o DAG : include
+Template .d.o Container : include
+Template .d.o Script : include
+Template .d.o Resource : include
+Template .r.o Inputs : include
+Template .r.o Outputs : include
+
+Inputs ..o MINIO : use
+Outputs ..o MINIO : use
+
+Container --> Pods : run
+Script --> Pods : run
+Resource --> Resources : create
+Pods --> MINIO : write LogFile/Artifacts
 
 @enduml
 
