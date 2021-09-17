@@ -22,31 +22,29 @@ legend
     | <size:14><back:#Yellow>기존컴포넌트</back></size>|
 endlegend
 
-rectangle "site A" as a {
-    rectangle "Common Service" as comm {
-        [SSO] as sso
-        [Cube] as cube
-        [CDN] as cdn
-        [SMTP] as smtp
+rectangle "Common Service" as comm {
+    [SSO] as sso
+    [Cube] as cube
+    [CDN] as cdn
+    [SMTP] as smtp
+}
+rectangle "CI/CD" as cicd {
+    [Nexus] as nexus
+    [Bitbucket] as bitbucket
+    [Jira] as jira
+    [Harbor] as harbor #orange
+}
+node "Platfrom Plane" as hcp {
+    rectangle "Portal" as portal {
+        [WP] as wp
+        [DWP] as dwp
+        [Redis-WP] as rediswp
+        [Redis-DWP] as redisdwp
     }
-    rectangle "CI/CD" as cicd {
-        [Nexus] as nexus
-        [Bitbucket] as bitbucket
-        [Jira] as jira
-        [Harbor] as harbor #orange
-    }
-    node "Platfrom Plane" as hcp {
-        rectangle "Portal" as portal {
-            [WP] as wp
-            [DWP] as dwp
-            [Redis-WP] as rediswp
-            [Redis-DWP] as redisdwp
-        }
-        rectangle "Task Service" as task {
-            [TaskAgent] as taskagent #orange
-            [TaskRunner] as taskrunner #orange
-            [NotifyAgent] as notifyagent #orange
-        }
+    rectangle "Task Service" as task {
+        [TaskAgent] as taskagent #orange
+        [TaskRunner] as taskrunner #orange
+        [NotifyAgent] as notifyagent #orange
     }
 }
 
