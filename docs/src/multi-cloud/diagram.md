@@ -267,7 +267,7 @@ User -> DWP : view status
 
 ### CI process
 - 고려사항
-    - TaskAgent 는 Taget Cluster 를 Discovery 하는 기능 필요함
+    - TaskAgent 는 Target Cluster 를 Discovery 하는 기능 필요함
     - application source 는 사이즈가 크지 않으므로 site A 에서 checkout 받음
     - docker image 사이즈가 커서 네트워크 트래픽 문제가 발생할 수 있음
     - 네트워크 트래픽 문제로 docker repository 는 site B 에 위치해야 함
@@ -371,6 +371,7 @@ activate TaskRunner
 
 TaskRunner -> argoyaml : if not exists ArgoApp. then \n push yaml
 ArgoCD -\ argoyaml : if not exists ArgoApp. then \n sync yaml
+note right : AgroCD process
 ArgoCD -\ k8sc : if not exists ArgoApp. then \n deploy yaml
 
 TaskRunner -> yaml : checkout yaml
