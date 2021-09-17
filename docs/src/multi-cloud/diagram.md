@@ -12,7 +12,7 @@
 ### Site A
 - Site B 에서 사용하는 컴포넌트만 표시함
 - Docker registry 로 Harbor 를 사용함
-- Task 기반 비동기 처리를 위해 TaskAgent, NotifyAgent 를 사용함 
+- Task 기반 비동기 처리를 위해 TaskAgent, TaskRunner, NotifyAgent 를 사용함 
 
 @startuml
 
@@ -46,6 +46,7 @@ rectangle "site A" as a {
         }
         rectangle "Task Service" as hcp_agent {
             [TaskAgent] as hcp_agent_taskagent #orange
+            [TaskRunner] as hcp_agent_taskrunner #orange
             [NotifyAgent] as hcp_agent_notifyagent #orange
         }
     }
@@ -217,8 +218,12 @@ b_wp -> b_user : success
 @enduml
 
 ### Create application process
+- 고려사항
+    - site 정보와 상관없이 application 을 생성을 할 수 있도록 한다.
+    - DWP metadata 생성 및 source repository 를 개발자에게 제공하는 범위로 한정한다.
 - 검토 필요 사항
-    - Async process 에 대한 status 조회 방안 필요
+    - TaskRunner 에서 발생하는 status 를 NotifyAgent 로 보내는 기술 검증 필요
+    - TaskRunner 에서 발생하는 status 를 조회하는 기능 검증 필요
 
 @startuml
 
@@ -228,11 +233,12 @@ skinparam BoxPadding 5
 title "App. 생성"
 
 actor User
-box "site A"
+box "site A - platform plane"
     participant DWP
     participant CUBE
     participant NotifyAgent
     participant TaskAgent
+    participant TaskRunner
     participant "Bitbucket\n(source)" as source
     participant "Bitbucket\n(yaml)" as yaml
     participant Jira
@@ -241,15 +247,17 @@ end box
 autonumber 1-1
 User -> DWP : create app.
 DWP -\ TaskAgent : run task
-activate TaskAgent
-TaskAgent -> source : checkout source template
-TaskAgent -> source : create repository
-TaskAgent -> source : push source
-TaskAgent -> yaml : checkout yaml template
-TaskAgent -> yaml : create repository
-TaskAgent -> yaml : push yaml
-TaskAgent -> Jira : create jira project
-TaskAgent --\ NotifyAgent : send notify
+TaskAgent -> TaskRunner : run task
+activate TaskRunner
+TaskRunner -> source : checkout source template
+TaskRunner -> source : create repository
+TaskRunner -> source : push source
+TaskRunner -> yaml : checkout yaml template
+TaskRunner -> yaml : create repository
+TaskRunner -> yaml : push yaml
+TaskRunner -> Jira : create jira project
+TaskRunner --\ NotifyAgent : send notify
+deactivate TaskRunner
 NotifyAgent --\ CUBE : send message
 
 autonumber 2-1
@@ -258,8 +266,17 @@ User -> DWP : view status
 @enduml
 
 ### CI process
+- 고려사항
+    - TaskAgent 는 Taget Cluster 를 Discovery 하는 기능 필요함
+    - application source 는 사이즈가 크지 않으므로 site A 에서 checkout 받음
+    - docker image 사이즈가 커서 네트워크 트래픽 문제가 발생할 수 있음
+    - 네트워크 트래픽 문제로 docker repository 는 site B 에 위치해야 함
+    - 네트워크 트래픽 문제로 docker build & push 는 site B 에서 수행해야 함
+    - site 간 docker image 동기화 필요함
 - 검토 필요 사항
-    - Async process 에 대한 status 조회 방안 필요
+    - TaskRunner 에서 발생하는 status 를 NotifyAgent 로 보내는 기술 검증 필요
+    - TaskRunner 에서 발생하는 status 를 조회하는 기능 검증 필요
+    - site 간 docker image 동기화 시간 및 간격 검증 필요
 
 @startuml
 
@@ -275,6 +292,7 @@ box "site A - platform plane"
     participant NotifyAgent
     participant TaskAgent
     participant "Bitbucket\n(source)" as source
+    participant Harbor as HarborA
 end box
 box "site B - control plane"
     participant TaskRunner
@@ -290,25 +308,33 @@ DWP -\ TaskAgent : run task
 TaskAgent -> TaskAgent : discovery taskrunner
 TaskAgent -\ TaskRunner : run task
 activate TaskRunner
+
 TaskRunner -> source : checkout source
 TaskRunner -> TaskRunner : build application
 TaskRunner -> Nexus : download libs
 TaskRunner -> TaskRunner : build dockerfile
 TaskRunner -> Harbor : push docker image
-Harbor -\ Harbor : scan docker image
 TaskRunner -> SonarQube : test source
+
 TaskRunner --\ NotifyAgent : send notify
 deactivate TaskRunner
 NotifyAgent --\ CUBE : send message
 
 autonumber 2-1
+Harbor -\ Harbor : scan docker image
+note left : Harbor process
+Harbor -\ HarborA : sync docker image
+
+autonumber 3-1
 User -> DWP : view status
 
 @enduml
 
 ### CD process
-- 검토 필요 사항
-    - Async process 에 대한 status 조회 방안 필요
+- 고려사항
+    - Deploy 를 수행하는 시점에 ArgoCD Application 을 생성한다.
+    - ArgoCD Application 도 bitbucket yaml 로 관리한다.
+    - ArgoCD metadata 는 control plane 에 유지한다.
 
 @startuml
 
@@ -324,10 +350,12 @@ box "site A - platform plane"
     participant NotifyAgent
     participant TaskAgent
     participant "Bitbucket\n(yaml)" as yaml
+    participant "Bitbucket\n(ArgoCD)" as argoyaml
 end box
 box "site B - control plane"
     participant TaskRunner
     participant ArgoCD
+    participant k8s as k8sc
     participant Harbor
 end box
 box "site B - data plane"
@@ -340,25 +368,102 @@ DWP -\ TaskAgent : run task
 TaskAgent -> TaskAgent : discovery taskrunner
 TaskAgent -\ TaskRunner : run task
 activate TaskRunner
+
+TaskRunner -> argoyaml : if not exists ArgoApp. then \n push yaml
+ArgoCD -\ argoyaml : if not exists ArgoApp. then \n sync yaml
+ArgoCD -\ k8sc : if not exists ArgoApp. then \n deploy yaml
+
 TaskRunner -> yaml : checkout yaml
 TaskRunner -> TaskRunner : modify yaml
 TaskRunner -> yaml : push yaml
-TaskRunner -> ArgoCD : if not exists app. then \n   create app.
 TaskRunner -\ ArgoCD : run deploy
-ArgoCD -> yaml : chcekout yaml
-ArgoCD -> k8s : diff yaml
-ArgoCD -\ k8s : deploy yaml
-k8s -\ k8s : run deploy/pod
-k8s -\ Harbor : pull docker image
+
 TaskRunner --\ NotifyAgent : notify status
 deactivate TaskRunner
 NotifyAgent --\ CUBE : send message
+
+autonumber 4-1
+ArgoCD -\ yaml : checkout yaml
+note right : AgroCD process
+ArgoCD -\ k8s : deploy yaml
+
+autonumber 3-1
+k8s -\ k8s : deploy resource
+note left : k8s process
+k8s -\ Harbor : pull docker image
 
 autonumber 4-1
 User -> DWP : view status
 
 @enduml
 
+### Helm CD process
+- 고려사항
+    - ArgoCD Helm application 을 생성하면 ArgoCD 가 helm chart 를 배포해줌
+    - ArgoCD helm app. 역시 bitbucket repository 로 관리함
+    - helm app. 내 parameter 설정으로 values.yml 수정함
+- 검토 필요 사항
+    - Async process 에 대한 status 조회 방안 필요
+
+@startuml
+
+scale 1
+skinparam ParticipantPadding 5
+skinparam BoxPadding 5
+title "Deploy Helm Chart"
+
+actor User
+box "site A - platform plane"
+    participant DWP
+    participant CUBE
+    participant NotifyAgent
+    participant TaskAgent
+    participant "Bitbucket\n(yaml)" as yaml
+    participant "Bitbucket\n(ArgoCD)" as argoyaml
+end box
+box "site B - control plane"
+    participant TaskRunner
+    participant ArgoCD
+    participant Harbor
+    participant k8s as k8sc
+end box
+box "site B - data plane"
+    participant k8s
+end box
+
+autonumber 1-1
+User -> DWP : run CD
+DWP -\ TaskAgent : run task
+TaskAgent -> TaskAgent : discovery taskrunner
+TaskAgent -\ TaskRunner : run task
+activate TaskRunner
+
+TaskRunner -> argoyaml : if not exists ArgoApp. then \n push yaml
+TaskRunner -> argoyaml : checkout yaml
+TaskRunner -> TaskRunner : modify yaml
+TaskRunner -> argoyaml : push yaml
+TaskRunner -\ ArgoCD : sync yaml
+
+TaskRunner --\ NotifyAgent : notify status
+deactivate TaskRunner
+NotifyAgent --\ CUBE : send message
+
+autonumber 2-1
+ArgoCD -> argoyaml : checkout yaml
+note right : AgroCD process
+ArgoCD -> k8sc : deploy ArgoCD app.
+ArgoCD -\ k8s : deploy helm chart
+
+autonumber 3-1
+k8s -\ Harbor : download helm chart
+note right : k8s process
+k8s -\ k8s : deploy resources
+k8s -\ Harbor : pull docker image
+
+autonumber 4-1
+User -> DWP : view status
+
+@enduml
 
 ## ETC
 - TaskRunner 로 사용 가능한 Open Source 정리
