@@ -41,9 +41,14 @@ node "Platfrom Plane" as hcp {
     }
     rectangle "Task Service" as task {
         [TaskAgent] as taskagent #orange
-        [TaskRunner] as taskrunner #orange
         [NotifyAgent] as notifyagent #orange
+        [TaskRunner] as taskrunner #orange
+        [ArgoCD] as argocd #orange
+        [MINIO] as minio #orange
+        [POSTGRES] as postgres #orange
     }
+    argocd ..* minio
+    argocd ..* postgres
     rectangle "Managed Service" as managed {
         [Redis] as redis
     }
@@ -72,7 +77,11 @@ node "Control Plane" as bcp {
     rectangle "Task Service" as task {
         [TaskRunner] as taskruuner #orange
         [ArgoCD] as argocd #orange
+        [MINIO] as minio #orange
+        [POSTGRES] as postgres #orange
     }
+    argocd ..* minio
+    argocd ..* postgres
     rectangle "CI/CD Service" as cicd {
         [Nexus] as nexus
         [SonarQube] as sonarqube
@@ -317,7 +326,7 @@ User -> DWP : view status
 scale 1
 skinparam ParticipantPadding 5
 skinparam BoxPadding 5
-title "App. 생성"
+title "Helm Chart 생성"
 
 actor User
 box "site A - platform plane"
@@ -346,7 +355,7 @@ User -> DWP : view status
 
 @enduml
 
-### CI process
+### App. CI process
 - 고려사항
     - TaskAgent 는 Target Cluster 를 Discovery 하는 기능 필요함
     - application source 는 사이즈가 크지 않으므로 site A 에서 checkout 받음
@@ -411,7 +420,7 @@ User -> DWP : view status
 
 @enduml
 
-### CD process
+### App. CD process
 - 고려사항
     - Deploy 를 수행하는 시점에 ArgoCD Application 을 생성한다.
     - ArgoCD Application 도 bitbucket yaml 로 관리한다.
