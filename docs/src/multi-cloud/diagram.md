@@ -38,13 +38,14 @@ node "Platfrom Plane" as hcp {
     rectangle "Portal" as portal {
         [WP] as wp
         [DWP] as dwp
-        [Redis-WP] as rediswp
-        [Redis-DWP] as redisdwp
     }
     rectangle "Task Service" as task {
         [TaskAgent] as taskagent #orange
         [TaskRunner] as taskrunner #orange
         [NotifyAgent] as notifyagent #orange
+    }
+    rectangle "Managed Service" as managed {
+        [Redis] as redis
     }
 }
 
@@ -68,25 +69,25 @@ legend
 endlegend
 
 node "Control Plane" as bcp {
-    rectangle "Task Service" as bcp_cicd {
-        [TaskRunner] as bcp_taskruuner #orange
-        [ArgoCD] as bcp_argocd #orange
+    rectangle "Task Service" as task {
+        [TaskRunner] as taskruuner #orange
+        [ArgoCD] as argocd #orange
     }
-    rectangle "CI/CD Service" as bcp_common {
-        [Gitee] as gitee #orange
+    rectangle "CI/CD Service" as cicd {
         [Nexus] as nexus
         [SonarQube] as sonarqube
         [Harbor] as harbor #orange
+        [Gitee] as gitee #orange
     }
-    rectangle "Monitoring/Alert" as bcp_mon {
-        [Elastic-Search\n(long-terms)] as bcp_mon_elk
-        [Grafana\n(long-terms)] as bcp_mon_grafana
-        [Kibana\n(long-terms)] as bcp_mon_kibana
-        [Prometheus\n(long-terms)] as bcp_mon_prometheus
+    rectangle "Monitoring/Alert" as mon {
+        [Elastic-Search\n(long-terms)] as elastic
+        [Grafana\n(long-terms)] as grafana
+        [Kibana\n(long-terms)] as kibana
+        [Prometheus\n(long-terms)] as prometheus
     }
-    rectangle "Managed Service" as bcp_managed {
-        [Redis] as bcp_mananged_redis
-    }
+}
+rectangle "Managed Service" as managed {
+    [Redis] as redis
 }
 
 @enduml
@@ -100,16 +101,17 @@ legend
 endlegend
 
 node "Data Plane" as bdp {
-    rectangle "Biz" as bdp_biz {
-        [A-Biz-App.-Backend] as bdp_biza
-        [B-Biz-App.-Backend] as bdp_bizb
+    rectangle "Biz" as biz {
+        [Backend-A]
+        [Helm-A]
     }
-    rectangle "Monitoring/Alert" as bdp_mon {
-        [Elastic-Search\n(short-terms)] as bdp_mon_elk
-        [Grafana\n(short-terms)] as bdp_mon_grafana
-        [Kibana\n(short-terms)] as bdp_mon_kibana
-        [Prometheus\n(short-terms)] as bdp_mon_prometheus
-        [loki\n(short-terms)] as dbp_mon_loki #orange
+    rectangle "Monitoring/Alert" as mon {
+        [Elastic-Search\n(short-terms)] as elastic
+        [Grafana\n(short-terms)] as grafana
+        [Kibana\n(short-terms)] as kibana
+        [Prometheus\n(short-terms)] as prometheus
+        [AlertManager\n(short-terms)] as alertmanager
+        [loki\n(short-terms)] as loki #orange
     }
 }
 
