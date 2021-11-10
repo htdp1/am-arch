@@ -8,6 +8,12 @@
     - DWP 에서 Cluster Resource 제어시 status monitoring 을 적용한다.
     - Access Log 를 Application 외부에서 처리하거나 최소한 Redis 직접 접속은 제거한다
 
+- task list
+    - App CI
+    - App CD
+    - App Pod  실행
+    - SRE Component 
+
 ## Deployment Diagram
 ### Site A
 - Site B 에서 사용하는 컴포넌트만 표시함
