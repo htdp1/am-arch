@@ -96,7 +96,7 @@ module.exports = {
         {
           title: "Modern API",
           collapsable: false,
-          children: ["", "modernapi"],
+          children: ["modernapi"],
           sidebarDepth: 2,
         },
         {
