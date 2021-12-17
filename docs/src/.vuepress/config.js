@@ -94,6 +94,12 @@ module.exports = {
           sidebarDepth: 2,
         },
         {
+          title: "Modern API",
+          collapsable: false,
+          children: ["", "modernapi"],
+          sidebarDepth: 2,
+        },
+        {
           title: "Redis",
           collapsable: false,
           children: ["", "perftest", "hatest"],
